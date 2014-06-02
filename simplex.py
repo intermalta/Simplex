@@ -68,11 +68,15 @@ def simplex(A, b, c):
 			flag = 1
 			return xb,z,y
 		else:
+
+			#anti cycle - lexicographic order
 			maximo = 0
 			for j in range(cred.shape[0]):
 				if cred[j] > maximo:
 					maximo = cred[j]
 					posicaoColuna = j
+					break
+		
 
 			u = dot(Binv, N[:,posicaoColuna])
 	
@@ -105,13 +109,13 @@ def simplex(A, b, c):
 					exit(-2)
 				base, nbase = pivot(posicaoLinha, posicaoColuna, base, nbase)
 if __name__ == "__main__":
-	c = array([4, 3])
-	A = array([[2, 1], [1,2]])
-	b = array([4,4])
+	#c = array([4, 3])
+	#A = array([[2, 1], [1,2]])
+	#b = array([4,4])
 
-	#c = array([4,3])
-	#A = array([[1,-1], [2,-1], [0,1]])
-	#b = array([1,3,5])
+	c = array([4,3])
+	A = array([[1,-1], [2,-1], [0,1]])
+	b = array([1,3,5])
 		
 	xb, z, y =simplex(A, b, c)
 	print xb
