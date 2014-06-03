@@ -77,25 +77,25 @@ def simplex(A, b, c):
 					posicaoColuna = j
 					break
 		
-
-			u = dot(Binv, N[:,posicaoColuna])
+			#direcao do deslocamento
+			direcao = dot(Binv, N[:,posicaoColuna])
 	
 			#print "=========="
-			#print u
-			umax = u.max()
+			#print direcao
+			dmax = direcao.max()
 		
-			if umax < 0:
+			if dmax < 0:
 				print "Problema Ilimitado"
 			else:
-				for i in range(u.shape[0]):
-					if u[i] <= 0:
-						u[i] = nan
-				#print u
+				for i in range(len(direcao)):
+					if direcao[i] <= 0:
+						direcao[i] = nan
+				#print direcao
 				#print Binv
 				#print b
 				temp = dot(Binv, b)
 				#print temp
-				temp = temp/u
+				temp = temp/direcao
 				#print temp
 				posicaoLinha = nanargmin(temp)
 				if posicaoLinha == -1:
