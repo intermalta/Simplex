@@ -7,11 +7,11 @@ import scipy.linalg
 def pivot(i,j, base, nbase):
 	aux = base[i]
 	#print aux
+	print "variavel %d sai da base" %(base[i])
 	base[i] = nbase[j]
-	print "variavel %d entra na base" %j
+	print "variavel %d entra na base" %(nbase[j])
 	#print base
 	nbase[j] = aux
-	print "variavel %d sai da base" %aux
 	#print nbase
 	return base, nbase
 
@@ -31,6 +31,100 @@ def simplex(A, b, c):
 	if bmin < 0:
 		#implementar fase 1 do simplex
 		print "Implementar fase 1"
+		#adding w to A matrix at last column 
+		AwithW = concatenate((Aext, ones((m,1))*(bmin)), 1)
+		print AwithW
+
+		#add -1 to w position in the new cost vector
+		cwithW = concatenate((zeros(m+n), ones(1)*bmin))
+		print cwithW
+
+		base1 = array([i for i in range(n, n+m)])
+		print base1
+		nbase1 = array([i for i in range(0,n+1)])
+		nbase1[-1] = n+m
+		print nbase1
+
+		#adding w to the base
+		entrante = len(base1) -1  
+		print 'entrante %d' %entrante
+		sainte = argmin(b)
+		print 'sainte %d' %sainte
+		base1, nbase1 = pivot(sainte, entrante, base1, nbase1)
+		print base1, nbase1
+
+		while True:
+			Bw = AwithW[:,base1]
+			print Bw
+			Nw = AwithW[:,nbase1]
+			print Nw
+
+			cbw = cwithW[:,base1]
+			cnw = cwithW[:,nbase1]
+
+			Bwinv =  linalg.inv(Bw)
+			yw = dot(cbw, Bwinv)
+			credw = cnw - dot(yw, b)
+			xbw = dot(Bwinv, b)
+			zw = dot(cbw, xbw)
+			
+			if max(cbw) < 0 or zw > 0:
+				print 'Problema inviavel'
+				exit()
+			else:
+				if zw == 0:
+				  print 'Fim fase 1'
+				  #search for column w
+				  posw = -1
+				  for i in (range(len(nbase1))):
+					  if nbase1[i] == n+m:
+						  posw = i
+				  if posw == -1:
+					  print 'w not found in non bases vector'
+					  exit(3)
+
+				  Nw = delete(Nw, posw)
+				  print Nw
+				  nbase1 = delete(nbase1, posw)
+				  print nbase1
+				  
+				  base=base1
+				  nbase = nbase1
+				  break
+			
+			maximow = 0
+			for j in range(credw.shape[0]):
+				if credw[j] > maximow:
+					maximow = credw[j]
+					posicaoColunaw = j
+					break
+		
+			#direcao do deslocamento
+			direcaow = dot(Bwinv, Nw[:,posicaoColunaw])
+
+			#print "=========="
+			#print direcaow
+			dwmax = direcaow.max()
+		
+			if dwmax < 0:
+				print "Problema Ilimitado"
+			else:
+				for i in range(len(direcaow)):
+					if direcaow[i] <= 0:
+						direcaow[i] = nan
+				#print direcaow
+				#print Bwinv
+				#print b
+				wtemp = dot(Bwinv, b)
+				#print wtemp
+				wtemp = wtemp/direcaow
+				#print wtemp
+				posicaoLinhaw = nanargmin(wtemp)
+				if posicaoLinhaw == -1:
+					print "Menor elemento nao encontrado"
+					exit(-2)
+				base1, nbase1 = pivot(posicaoLinhaw, posicaoColunaw, base1, nbase1)
+
 	else:
 		base = array([i for i in range(n, n+m)])
 		#print base
@@ -38,6 +132,7 @@ def simplex(A, b, c):
 		#print nbase
 	
 	#simplex fase 2
+	print 'inicio fase 2'
 	flag = 0
 	while flag == 0:
 		
@@ -107,11 +202,15 @@ if __name__ == "__main__":
 	#A = array([[2, 1], [1,2]])
 	#b = array([4,4])
 
-	c = array([4,3])
-	A = array([[1,-1], [2,-1], [0,1]])
-	b = array([1,3,5])
+	#c = array([4,3])
+	#A = array([[1,-1], [2,-1], [0,1]])
+	#b = array([1,3,5])
 		
+	c = array([4, 3])
+	A = array([[2, 1], [1,2], [-1,-1]])
+	b = array([4,4, -1])
 	xb, z, y =simplex(A, b, c)
+	print '==== resposta ===='
 	print xb
 	print z
 	print y
