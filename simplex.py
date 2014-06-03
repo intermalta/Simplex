@@ -97,13 +97,7 @@ def simplex(A, b, c):
 				#print temp
 				temp = temp/u
 				#print temp
-				minimo = 1000000000000
-				posicaoLinha = -1
-				for i in range(temp.shape[0]):
-					if temp[i] < minimo:
-						minimo = temp[i]
-						posicaoLinha = i
-
+				posicaoLinha = nanargmin(temp)
 				if posicaoLinha == -1:
 					print "Menor elemento nao encontrado"
 					exit(-2)
