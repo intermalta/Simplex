@@ -15,22 +15,22 @@ def pivot(i,j, base, nbase):
 	#print nbase
 	return base, nbase
 
-def simplex(A, b, c):
-	[m,n] = A.shape
-	#print [m,n]
 
-	Aext = concatenate((A, eye(m)), 1)
-	#print Aext
-	
-	cext = concatenate((c.transpose(), zeros(m)))
-	#print cext
-	#print c
+def get_var_sainte(direcao, Binv, b):
 
-	bmin = min(b)
-	#print bmin
-	if bmin < 0:
-		#implementar fase 1 do simplex
-		print "Implementar fase 1"
+		for i in range(len(direcao)):
+			if direcao[i] <= 0:
+				direcao[i] = nan
+		#print direcao
+		#print Binv
+		#print b
+		temp = dot(Binv, b)
+		#print temp
+		temp = temp/direcao
+		#print temp
+		return nanargmin(temp)
+
+def	phase_one(Aext, b, bmin, cext, m,n):
 		#adding w to A matrix at last column 
 		AwithW = concatenate((Aext, ones((m,1))*(bmin)), 1)
 		print AwithW
@@ -53,7 +53,8 @@ def simplex(A, b, c):
 		base1, nbase1 = pivot(sainte, entrante, base1, nbase1)
 		print base1, nbase1
 
-		while True:
+		tentativas = 200
+		while tentativas > 0:
 			Bw = AwithW[:,base1]
 			print Bw
 			Nw = AwithW[:,nbase1]
@@ -73,7 +74,6 @@ def simplex(A, b, c):
 				exit()
 			else:
 				if zw == 0:
-				  print 'Fim fase 1'
 				  #search for column w
 				  posw = -1
 				  for i in (range(len(nbase1))):
@@ -86,11 +86,11 @@ def simplex(A, b, c):
 				  Nw = delete(Nw, posw)
 				  print Nw
 				  nbase1 = delete(nbase1, posw)
+				  print '====='
 				  print nbase1
 				  
-				  base=base1
-				  nbase = nbase1
-				  break
+				  print 'Fim fase 1'
+				  return base1, nbase1
 			
 			maximow = 0
 			for j in range(credw.shape[0]):
@@ -109,21 +109,26 @@ def simplex(A, b, c):
 			if dwmax < 0:
 				print "Problema Ilimitado"
 			else:
-				for i in range(len(direcaow)):
-					if direcaow[i] <= 0:
-						direcaow[i] = nan
-				#print direcaow
-				#print Bwinv
-				#print b
-				wtemp = dot(Bwinv, b)
-				#print wtemp
-				wtemp = wtemp/direcaow
-				#print wtemp
-				posicaoLinhaw = nanargmin(wtemp)
-				if posicaoLinhaw == -1:
-					print "Menor elemento nao encontrado"
-					exit(-2)
+				posicaoLinhaw = get_var_sainte(direcaow, Bwinv, b)
 				base1, nbase1 = pivot(posicaoLinhaw, posicaoColunaw, base1, nbase1)
+			tentativas = tentativas - 1
+def simplex(A, b, c):
+	[m,n] = A.shape
+	#print [m,n]
+
+	Aext = concatenate((A, eye(m)), 1)
+	#print Aext
+	
+	cext = concatenate((c.transpose(), zeros(m)))
+	print cext
+	print c
+	print '================='
+
+	bmin = min(b)
+	#print bmin
+	if bmin < 0:
+		print "phase 1"
+		base, nbase = phase_one(Aext, b, bmin, cext, m, n)
 
 	else:
 		base = array([i for i in range(n, n+m)])
@@ -133,8 +138,8 @@ def simplex(A, b, c):
 	
 	#simplex fase 2
 	print 'inicio fase 2'
-	flag = 0
-	while flag == 0:
+	tentativas = 20
+	while tentativas > 0:
 		
 		B = Aext[:,base]
 		#print B
@@ -182,21 +187,9 @@ def simplex(A, b, c):
 			if dmax < 0:
 				print "Problema Ilimitado"
 			else:
-				for i in range(len(direcao)):
-					if direcao[i] <= 0:
-						direcao[i] = nan
-				#print direcao
-				#print Binv
-				#print b
-				temp = dot(Binv, b)
-				#print temp
-				temp = temp/direcao
-				#print temp
-				posicaoLinha = nanargmin(temp)
-				if posicaoLinha == -1:
-					print "Menor elemento nao encontrado"
-					exit(-2)
+				posicaoLinha = get_var_sainte(direcao, Binv, b)
 				base, nbase = pivot(posicaoLinha, posicaoColuna, base, nbase)
+			tentativas = tentativas - 1
 if __name__ == "__main__":
 	#c = array([4, 3])
 	#A = array([[2, 1], [1,2]])
