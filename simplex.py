@@ -3,6 +3,13 @@
 from numpy import *
 import scipy as Sci
 import scipy.linalg
+def validate_input(A,b,c):
+	[m,n] = A.shape
+	if (m != len(b)):
+		return 1
+	if (n != len(c)):
+		return 1
+	return 0
 
 def pivot(i,j, base, nbase):
 	aux = base[i]
@@ -30,7 +37,7 @@ def get_var_sainte(direcao, Binv, b):
 		#print temp
 		return nanargmin(temp)
 
-def	phase_one(Aext, b, bmin, cext, m,n):
+def phase_one(Aext, b, bmin, cext, m,n):
 		#adding w to A matrix at last column 
 		AwithW = concatenate((Aext, ones((m,1))*(bmin)), 1)
 		print AwithW
@@ -89,7 +96,7 @@ def	phase_one(Aext, b, bmin, cext, m,n):
 				  print '====='
 				  print nbase1
 				  
-				  print 'Fim fase 1'
+				  print 'Fim fase 1 com %d iteracoes' %(200 - tentativas +1)
 				  return base1, nbase1
 			
 			maximow = 0
@@ -113,6 +120,10 @@ def	phase_one(Aext, b, bmin, cext, m,n):
 				base1, nbase1 = pivot(posicaoLinhaw, posicaoColunaw, base1, nbase1)
 			tentativas = tentativas - 1
 def simplex(A, b, c):
+	
+	if validate_input(A,b,c):
+		print 'input with bounds problemns'
+		exit(-1)
 	[m,n] = A.shape
 	#print [m,n]
 
@@ -138,7 +149,7 @@ def simplex(A, b, c):
 	
 	#simplex fase 2
 	print 'inicio fase 2'
-	tentativas = 20
+	tentativas = 200
 	while tentativas > 0:
 		
 		B = Aext[:,base]
@@ -165,7 +176,8 @@ def simplex(A, b, c):
 			#estamos no otimo
 			xb = dot(Binv,b)
 			z = dot(cb,xb)
-			flag = 1
+			print base, nbase
+			print 'Fim fase 2 - %d iteracoes' %(200 - tentativas +1)
 			return xb,z,y
 		else:
 
