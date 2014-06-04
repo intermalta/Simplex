@@ -3,6 +3,9 @@
 from numpy import *
 import scipy as Sci
 import scipy.linalg
+
+def print_dictionary(Binv, N, b, cb, cn, xn):
+	return
 def validate_input(A,b,c):
 	[m,n] = A.shape
 	if (m != len(b)):
@@ -81,7 +84,7 @@ def phase_one(Aext, b, bmin, cext, m,n):
 				exit()
 			else:
 				if zw == 0:
-				  #search for column w
+				  #we are at optimal z -> search for column w
 				  posw = -1
 				  for i in (range(len(nbase1))):
 					  if nbase1[i] == n+m:
@@ -94,8 +97,8 @@ def phase_one(Aext, b, bmin, cext, m,n):
 				  print Nw
 				  nbase1 = delete(nbase1, posw)
 				  print '====='
-				  print nbase1
-				  
+				  print 'initial base'
+				  print base1
 				  print 'Fim fase 1 com %d iteracoes' %(200 - tentativas +1)
 				  return base1, nbase1
 			
@@ -131,9 +134,9 @@ def simplex(A, b, c):
 	#print Aext
 	
 	cext = concatenate((c.transpose(), zeros(m)))
-	print cext
-	print c
-	print '================='
+	#print cext
+	#print c
+	#print '================='
 
 	bmin = min(b)
 	#print bmin
