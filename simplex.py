@@ -58,24 +58,25 @@ def get_var_sainte(direcao, Binv, b):
 
 def phase_one(Aext, b, bmin, cext, m,n):
 		#adding w to A matrix at last column 
-		AwithW = concatenate((Aext, ones((m,1))*(bmin)), 1)
-		print AwithW
+		w = ones((m,1))*(bmin)
+		AwithW = concatenate((Aext, w), 1)
+		#print AwithW
 
 		#add -1 to w position in the new cost vector
 		cwithW = concatenate((zeros(m+n), ones(1)*bmin))
-		print cwithW
+		#print cwithW
 
 		base1 = array([i for i in range(n, n+m)])
-		print base1
+		#print base1
 		nbase1 = array([i for i in range(0,n+1)])
 		nbase1[-1] = n+m
-		print nbase1
+		#print nbase1
 
 		#adding w to the base
 		entrante = len(base1) -1  
-		print 'entrante %d' %entrante
+		#print 'entrante %d' %entrante
 		sainte = argmin(b)
-		print 'sainte %d' %sainte
+		#print 'sainte %d' %sainte
 		base1, nbase1 = pivot(sainte, entrante, base1, nbase1)
 		print base1, nbase1
 
@@ -166,13 +167,13 @@ def simplex(A, b, c):
 		nbase = array([i for i in range(0, n)])
 		#print nbase
 	
+	
 	#simplex fase 2
 	print 'inicio fase 2'
 	tentativas = 200
 	while tentativas > 0:
-		
 		B = Aext[:,base]
-		#print B
+		print B
 		N = Aext[:,nbase]
 		#print N
 		
@@ -222,22 +223,6 @@ def simplex(A, b, c):
 				posicaoLinha = get_var_sainte(direcao, Binv, b)
 				base, nbase = pivot(posicaoLinha, posicaoColuna, base, nbase)
 			
-			B = Aext[:,base]
-			#print B
-			N = Aext[:,nbase]
-			#print N
-			
-			cb = cext[:,base]
-			#print cb
-			cn = cext[:,nbase]
-			#print cn
-			
-			###### MUDAR AS INVERSOES DE MATRIZES #######
-			print B
-			print 'saiu a coluna %d' %posicaoLinha
-			Binv = linalg.inv(B)
-#print Binv
-			print revised_row(B, direcao, posicaoLinha)
 			tentativas = tentativas - 1
 if __name__ == "__main__":
 	 #c = array([4, 3])
