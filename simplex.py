@@ -17,15 +17,31 @@ def validate_input(A,b,c):
 def pivot(i,j, base, nbase):
 	aux = base[i]
 	#print aux
-	print "variavel %d sai da base" %(base[i])
+	#print "variavel %d sai da base" %(base[i])
 	base[i] = nbase[j]
-	print "variavel %d entra na base" %(nbase[j])
+	#print "variavel %d entra na base" %(nbase[j])
 	#print base
 	nbase[j] = aux
 	#print nbase
 	return base, nbase
 
+def revised_row(B, u, l):
+	[m,n] =B.shape
+	if l > n:
+	  print 'error with row limit in revised_row'
+	  exit()
+	if (u.shape[0] < l):
+		print 'error with vector dimension'
+	Binv = B
+	for i in range(m):
+		for j in range(n):
+			if i != l:
+			  Binv[i][j] = B[i][j] - ((B[l][j]*u[i])/u[l])
+			else:
+			  Binv[i][j] = B[l][j]/u[l] 
 
+	return Binv
+	
 def get_var_sainte(direcao, Binv, b):
 
 		for i in range(len(direcao)):
@@ -94,7 +110,7 @@ def phase_one(Aext, b, bmin, cext, m,n):
 					  exit(3)
 
 				  Nw = delete(Nw, posw)
-				  print Nw
+				  #print Nw
 				  nbase1 = delete(nbase1, posw)
 				  print '====='
 				  print 'initial base'
@@ -201,23 +217,53 @@ def simplex(A, b, c):
 		
 			if dmax < 0:
 				print "Problema Ilimitado"
+				exit()
 			else:
 				posicaoLinha = get_var_sainte(direcao, Binv, b)
 				base, nbase = pivot(posicaoLinha, posicaoColuna, base, nbase)
+			
+			B = Aext[:,base]
+			#print B
+			N = Aext[:,nbase]
+			#print N
+			
+			cb = cext[:,base]
+			#print cb
+			cn = cext[:,nbase]
+			#print cn
+			
+			###### MUDAR AS INVERSOES DE MATRIZES #######
+			print B
+			print 'saiu a coluna %d' %posicaoLinha
+			Binv = linalg.inv(B)
+#print Binv
+			print revised_row(B, direcao, posicaoLinha)
 			tentativas = tentativas - 1
 if __name__ == "__main__":
-	#c = array([4, 3])
-	#A = array([[2, 1], [1,2]])
-	#b = array([4,4])
+	 #c = array([4, 3])
+	 #A = array([[2, 1], [1,2]])
+	 #b = array([4,4])
 
-	#c = array([4,3])
-	#A = array([[1,-1], [2,-1], [0,1]])
-	#b = array([1,3,5])
+	 #c = array([4,3])
+	 #A = array([[1,-1], [2,-1], [0,1]])
+	 #b = array([1,3,5])
 		
 	c = array([4, 3])
-	A = array([[2, 1], [1,2], [-1,-1]])
+	A = array([[2, 1], [1,2], [-1,-1]])  
 	b = array([4,4, -1])
 	xb, z, y =simplex(A, b, c)
+  
+	##teste matriz revisada
+	#B = array([[1., 2., 3.], [-2., 3., 1.], [4.,-3.,-2.]])
+	#u = array([-4,2,2])
+	#revised_row(B,u,2)
+	#B = array([[1., 0., 0.], [2., 1., 0.], [0., 0., 1.]])
+	#u = array([1,2,0])
+
+	 #print revised_row(B, u, 0)
+	 #print linalg.inv(B)
+
+
 	print '==== resposta ===='
 	print xb
 	print z
