@@ -42,18 +42,20 @@ def revised_row(B, u, l):
 
     return Binv
     
-def get_var_sainte(u, Binv, b):
-        for i in range(len(u)):
-            if u[i] <= 0:
-                u[i] = nan
-        # print direcao
-        # print Binv
-        # print b
-        temp = dot(Binv, b)
-        # print temp
-        temp = temp / u
-        # print temp
-        return nanargmin(temp)
+def get_var_sainte(direcao, Binv, b):
+    u = direcao.copy()
+        
+    for i in range(len(u)):
+        if u[i] <= 0:
+            u[i] = nan
+    # print direcao
+    # print Binv
+    # print b
+    temp = dot(Binv, b)
+    # print temp
+    temp = temp / u
+    # print temp
+    return nanargmin(temp)
 
 def phase_one(Aext, b, bmin, cext, m, n):
         # adding w to A matrix at last column 
@@ -79,14 +81,14 @@ def phase_one(Aext, b, bmin, cext, m, n):
         base1, nbase1 = pivot(sainte, entrante, base1, nbase1)
         print base1, nbase1
 
-        Bwinv = revised_row(eye(m,n+1), w, sainte)
+        Bwinv = revised_row(eye(m, n + 1), w, sainte)
         tentativas = 200
         while tentativas > 0:
             
             Bw = AwithW[:, base1]
-            print linalg.inv(Bw)
+            #print linalg.inv(Bw)
             Nw = AwithW[:, nbase1]
-            print Nw
+            #print Nw
 
             cbw = cwithW[:, base1]
             cnw = cwithW[:, nbase1]
@@ -170,7 +172,7 @@ def simplex(A, b, c):
         # print nbase
     
     B = Aext[:, base]
-    #print B
+    # print B
     N = Aext[:, nbase]
     # print N
         
@@ -213,7 +215,7 @@ def simplex(A, b, c):
         
             # direcao do deslocamento
             direcao = dot(Binv, N[:, posicaoColuna])
-            u = direcao.copy()
+            
             # print "=========="
             # print direcao
             dmax = direcao.max()
@@ -222,25 +224,16 @@ def simplex(A, b, c):
                 print "Problema Ilimitado"
                 exit()
             else:
-                posicaoLinha = get_var_sainte(u, Binv, b)
+                posicaoLinha = get_var_sainte(direcao, Binv, b)
                 base, nbase = pivot(posicaoLinha, posicaoColuna, base, nbase)
             
             Binv = revised_row(Binv, direcao, posicaoLinha)
-            print Binv
-             
-            B = Aext[:, base]
-            #print B
-            #print linalg.inv(B)
+            #print Binv
             
-            N = Aext[:, nbase]
-            # print N
-                
             cb = cext[:, base]
             # print cb
             cn = cext[:, nbase]
             # print cn
-                        
-           
             
             tentativas = tentativas - 1
 if __name__ == "__main__":
