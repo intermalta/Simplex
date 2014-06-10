@@ -1,8 +1,6 @@
 #!/usr/bin/python
 
 from numpy import *
-import scipy as Sci
-import scipy.linalg
 
 def validate_input(A, b, c):
     [m, n] = A.shape
@@ -88,8 +86,7 @@ def phase_one(Aext, b, bmin, m, n):
             
             if max(cbw) < 0 or zw > 0:
                 print 'Problema inviavel'
-                #### XXX - excluir a coluna relativa a w
-                exit()
+                return(-1, xbw)
             
             if zw == 0:
                 # we are at optimal z -> search for column w
@@ -108,7 +105,7 @@ def phase_one(Aext, b, bmin, m, n):
                 print 'initial base'
                 print base1
                 print 'Fim fase 1 com %d iteracoes' % (200 - tentativas)
-                return base1, nbase1, Bwinv
+                return 3,base1, nbase1, Bwinv
                     
             posicaoColunaw = -1
             for j in range(len(credw)):
@@ -128,11 +125,11 @@ def phase_one(Aext, b, bmin, m, n):
                 posicaoLinhaw = get_var_sainte(direcaow, Bwinv, b)
                 base1, nbase1 = pivot(posicaoLinhaw, posicaoColunaw, base1, nbase1)
             Bwinv = revised_row(Bwinv, direcaow, posicaoLinhaw)
-            
+             
 def simplex(A, b, c):
     
     if validate_input(A, b, c):
-        print 'input with bounds problemns'
+        print 'input with bounds problems'
         exit(-1)
     [m, n] = A.shape
     # print [m,n]
@@ -141,23 +138,22 @@ def simplex(A, b, c):
     # print Aext
     
     cext = concatenate((c.transpose(), zeros(m)))
-    # print cext
-    # print c
-    # print '================='
 
     bmin = min(b)
     # print bmin
     if bmin < 0:
         print "phase 1"
-        first_fase = True
-        base, nbase, Binv = phase_one(Aext, b, bmin, m, n)
+        ret = phase_one(Aext, b, bmin, m, n)
+        if ret[0] == -1:
+            return ret
+        else:
+            base = ret[1]
+            nbase = ret[2]
+            Binv = ret[3]
 
     else:
         base = array([i for i in range(n, n + m)])
-        # print base
         nbase = array([i for i in range(0, n)])
-        # print nbase
-    if first_fase == False:
         B = Aext[:, base]
         Binv = B.copy()
     # print Binv
@@ -175,14 +171,13 @@ def simplex(A, b, c):
         cred = cn - dot(y, N)
         # print cred
         vec = cred[cred > 0]
+        xb = dot(Binv, b)
+        z = dot(cb, xb)
 
         if vec.sum() == 0:
-            # estamos no otimo
-            xb = dot(Binv, b)
-            z = dot(cb, xb)
             print base, nbase
             print 'Fim fase 2 - %d iteracoes' % (200 - tentativas)
-            return xb, z, y
+            return 1,xb, z, y, cred, base, nbase
 
         # anti cycle - Bland's rule
         posicaoColuna = -1
@@ -200,14 +195,15 @@ def simplex(A, b, c):
     
         if dmax < 0:
             print "Problema Ilimitado"
-            exit()
+            return (0, direcao*(-1))
+            
         else:
             posicaoLinha = get_var_sainte(direcao, Binv, b)
             base, nbase = pivot(posicaoLinha, posicaoColuna, base, nbase)
         
-        Binv = revised_row(Binv, direcao, posicaoLinha)
-            
-          
+        Binv = revised_row(Binv, direcao, posicaoLinha)   
+    #maximo de iteracoes atingido
+    return (-2, xb)  
 if __name__ == "__main__":
     # c = array([4, 3])
     # A = array([[2, 1], [1,2]])
@@ -217,18 +213,55 @@ if __name__ == "__main__":
     # A = array([[1,-1], [2,-1], [0,1]])
     # b = array([1,3,5])
         
-    c = array([4, 3])
-    A = array([[2, 1], [1, 2], [-1, -1]])  
-    b = array([4, 4, -1])
+    #c = array([4, 3])
+    #A = array([[2, 1], [1, 2], [-1, -1]])  
+    #b = array([4, 4, -1])
     
     
     #########Chvatal pg 39
-    #c = array([1,-1,1])
-    #A = array([[2,-1,2],[2,-3,1], [-1,1,-2]])
-    #b = array([4,-5,-1])
+    c = array([1,-1,1])
+    A = array([[2,-1,2],[2,-3,1], [-1,1,-2]])
+    b = array([4,-5,-1])
     
-    xb, z, y = simplex(A, b, c)
-  
+    ############Exemplo de problema ilimitado
+    #c = array([4,3])
+    #A = array([[-2,-1],[-1,-2]])
+    #b = array([-4,-4])
+    #c = array([1,3])
+    #A = array([[-1,-1],[-1,1],[-1,2]])
+    #b = array([-3,-1,2])
+    
+    #xb, z, y = simplex(A, b, c)
+    ret = simplex(A,b,c)
+    if (ret[0] == -2):
+        print 'Estado: '+ str(ret[0])
+        print'Maximo de iteracoes atingindo'
+        print 'Ultima solucao obtida: ' + ret[1].__str__()
+    elif (ret[0] == -1):
+        print 'Estado: '+ str(ret[0])
+        print 'Problema Inviavel'
+        print 'Ultima solucao obtida: ' + ret[1].__str__()
+    elif (ret[0] == 0):
+        print 'Estado: '+ str(ret[0])
+        print 'Problema ilimitado'
+        print 'Direcao Encontrada: ' + ret[1].__str__()
+    elif (ret[0] == 1):
+        print 'Estado '+ str(ret[0])
+        print 'valor otimo: ' + ret[2].__str__()
+        #print 'xb: ' + ret[1].__str__()
+        base = array([0. for i in range(A.shape[1])]) #n
+        nbase = array([0. for i in range(A.shape[0])]) #m
+        for i in range(len(ret[5])):
+            if ret[5][i] > A.shape[0]:
+                nbase[ret[5][i] - A.shape[0]] = ret[1][i]
+            else:
+                base[ret[5][i]] = ret[1][i]
+        print 'variaveis: ' + (base).__str__()
+        print 'variaveis de folga' + (nbase).__str__()    
+        print 'custos reduzidos ' + ret[4].__str__()
+        print 'variaveis duais: ' + ret[3].__str__()
+        print 'indices de variaveis basicas: ' + (ret[5]+1).__str__()
+        print 'indices de variaveis nao basicas: ' + (ret[6]+1).__str__()
     # #teste matriz revisada
     # B = array([[1., 2., 3.], [-2., 3., 1.], [4.,-3.,-2.]])
     # u = array([-4,2,2])
@@ -241,6 +274,6 @@ if __name__ == "__main__":
 
 
     print '==== resposta ===='
-    print xb
-    print z
-    print y
+    #print xb
+    #print z
+    #print y
