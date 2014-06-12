@@ -1,6 +1,50 @@
 #!/usr/bin/python
 
 from numpy import *
+from random import randint
+
+def print_tableau(B, NonB, bi, base, nbase):
+    Binv = B.copy()
+    N = NonB.copy()
+    b = bi.copy()
+    tableau = zeros(shape=(B.shape[0], B.shape[1]+N.shape[1]), dtype=float)
+    tableau[:,base] = eye(B.shape[0])
+    tableau[:,nbase] = dot(Binv,N)
+    print tableau
+
+def getTableau(Binv, N, b, base, nbase):
+    tableau = zeros(shape=(Binv.shape[0], Binv.shape[1]+N.shape[1]), dtype=float)
+    tableau[:,base] = eye(Binv.shape[0])
+    tableau[:,nbase] = dot(Binv,N)
+    return tableau
+
+def randomGraph():
+    nodes = randint(5,10)
+    print nodes
+    edges = 0
+    graph = zeros(shape=(nodes,nodes), dtype=float)
+    for i in xrange(nodes):
+        for j in xrange(nodes):
+            if i != j: #do not creat loops
+                e = randint(0,1)
+                graph[i][j] = e
+                if (e == 1):
+                    edges = edges + 1
+                
+    print 'Edges total= %d' %edges
+                
+    return graph, nodes, edges
+
+def getRestrictionsPLI():
+    g,n,m = randomGraph()
+    A = zeros(shape=(m,n), dtype=float)
+    row = 0
+    for i in xrange(m):
+        for j in xrange(m):
+            if g[i][j] == 1:
+                A[row][i] = 1
+                A[row][j] = 1
+                row = row + 1
 
 def validate_input(A, b, c):
     [m, n] = A.shape
@@ -126,19 +170,25 @@ def phase_one(Aext, b, bmin, m, n):
                 base1, nbase1 = pivot(posicaoLinhaw, posicaoColunaw, base1, nbase1)
             Bwinv = revised_row(Bwinv, direcaow, posicaoLinhaw)
              
-def simplex(A, b, c):
+def simplex(A, b, c, gomory=0, cortes=0):
     
     if validate_input(A, b, c):
         print 'input with bounds problems'
         exit(-1)
     [m, n] = A.shape
     # print [m,n]
+    if gomory == 0:
+        Aext = concatenate((A, eye(m)), 1)
+        # print Aext
+        cext = concatenate((c.transpose(), zeros(m)))
+    else:
+        if cortes == 0:
+            print 'Iteracao sem corte novo'
+            exit()
+        Aext = concatenate((A, eye(m,cortes)*(1)),1)
+        cext = concatenate((c, zeros(cortes)))
 
-    Aext = concatenate((A, eye(m)), 1)
-    # print Aext
     
-    cext = concatenate((c.transpose(), zeros(m)))
-
     bmin = min(b)
     # print bmin
     if bmin < 0:
@@ -152,8 +202,13 @@ def simplex(A, b, c):
             Binv = ret[3]
 
     else:
-        base = array([i for i in range(n, n + m)])
-        nbase = array([i for i in range(0, n)])
+        if gomory == 0:
+            base = array([i for i in range(n, n + m)])
+            nbase = array([i for i in range(0, n)])
+        else:
+            base = array([i for i in range(n, n + cortes)])
+            nbase = array([i for i in range(0, n)])
+    
         B = Aext[:, base]
         Binv = B.copy()
     # print Binv
@@ -177,7 +232,8 @@ def simplex(A, b, c):
         if vec.sum() == 0:
             print base, nbase
             print 'Fim fase 2 - %d iteracoes' % (200 - tentativas)
-            return 1,xb, z, y, cred, base, nbase
+            t = getTableau(Binv,N,b, base, nbase)
+            return 1,xb, z, y, cred, base, nbase, t, dot(Binv,b)
 
         # anti cycle - Bland's rule
         posicaoColuna = -1
@@ -203,36 +259,9 @@ def simplex(A, b, c):
         
         Binv = revised_row(Binv, direcao, posicaoLinha)   
     #maximo de iteracoes atingido
-    return (-2, xb)  
-if __name__ == "__main__":
-    # c = array([4, 3])
-    # A = array([[2, 1], [1,2]])
-    # b = array([4,4])
+    return (-2, xb)
 
-    # c = array([4,3])
-    # A = array([[1,-1], [2,-1], [0,1]])
-    # b = array([1,3,5])
-        
-    #c = array([4, 3])
-    #A = array([[2, 1], [1, 2], [-1, -1]])  
-    #b = array([4, 4, -1])
-    
-    
-    #########Chvatal pg 39
-    c = array([1,-1,1])
-    A = array([[2,-1,2],[2,-3,1], [-1,1,-2]])
-    b = array([4,-5,-1])
-    
-    ############Exemplo de problema ilimitado
-    #c = array([4,3])
-    #A = array([[-2,-1],[-1,-2]])
-    #b = array([-4,-4])
-    #c = array([1,3])
-    #A = array([[-1,-1],[-1,1],[-1,2]])
-    #b = array([-3,-1,2])
-    
-    #xb, z, y = simplex(A, b, c)
-    ret = simplex(A,b,c)
+def print_relatorio(ret):
     if (ret[0] == -2):
         print 'Estado: '+ str(ret[0])
         print'Maximo de iteracoes atingindo'
@@ -262,6 +291,106 @@ if __name__ == "__main__":
         print 'variaveis duais: ' + ret[3].__str__()
         print 'indices de variaveis basicas: ' + (ret[5]+1).__str__()
         print 'indices de variaveis nao basicas: ' + (ret[6]+1).__str__()
+   
+def testa_inteiros(b, eps):
+    for i in b:
+        if abs(i - round(i)) > eps:
+            return False
+    return True
+    
+def getLinhaGomory(t, rhs):
+    l = t.copy() 
+    
+    for i in xrange(len(t)):
+        l[i] = t[i] - math.floor(t[i])
+    
+    value = rhs - math.floor(rhs)
+    
+    return l, value
+    
+def getCuts(t, b, eps):
+    cut = array([])
+    rhs = array([])
+    primeiro = True
+    slack = 0
+    
+    for i in xrange(len(b)):
+        #if (abs(b[i] - round(b[i])) > eps):
+        l, value = getLinhaGomory(t[i], b[i])
+        if (primeiro == True): 
+            cut = concatenate((cut, l))
+            primeiro = False
+        else:
+            cut = concatenate((cut, l)).reshape(slack + 1, t.shape[1])
+
+        rhs = append(rhs, float(value))
+        slack = slack + 1
+            
+    #cut = concatenate((cut, eye(slack)), 1)
+    return cut,rhs
+            
+            
+            
+if __name__ == "__main__":
+    # c = array([4, 3])
+    # A = array([[2, 1], [1,2]])
+    # b = array([4,4])
+
+    # c = array([4,3])
+    # A = array([[1,-1], [2,-1], [0,1]])
+    # b = array([1,3,5])
+        
+    #c = array([4, 3])
+    #A = array([[2, 1], [1, 2], [-1, -1]])  
+    #b = array([4, 4, -1])
+    
+    
+    #########Chvatal pg 39
+    #c = array([1,-1,1])
+    #A = array([[2,-1,2],[2,-3,1], [-1,1,-2]])
+    #b = array([4,-5,-1])
+  
+    
+    ############Exemplo de problema ilimitado
+    #c = array([4,3])
+    #A = array([[-2,-1],[-1,-2]])
+    #b = array([-4,-4])
+    #c = array([1,3])
+    #A = array([[-1,-1],[-1,1],[-1,2]])
+    #b = array([-3,-1,2])
+    #c = array([10,20])
+    #A = array([[2,3],[4,1]])
+    #b = array([6,4])
+    #ret = simplex(A,b,c)
+    #print_relatorio(ret)
+    
+    
+    
+    #A,m = randomGraph()
+    #print A 
+    #xb, z, y = simplex(A, b, c)
+    ##### GOMORY  
+    c = array([5,8])
+    A = array([[1,1],[5,9]])
+    b = array([6,45])
+    #while(True):
+        
+    eps = 0.00001
+    ret = simplex(A,b,c)
+    print_relatorio(ret)
+    A = concatenate((A, eye(A.shape[0])),1)
+    
+    #testa se os valores das variaveis sao inteiras
+    while(testa_inteiros(ret[8], eps) == False):
+        cut, rhs = getCuts(ret[7], ret[8], eps)
+        [m,n] = cut.shape
+        #A = concatenate((A, zeros((A.shape[0], m))), 1)
+        A = concatenate((cut, A))
+        
+        b = concatenate((b, rhs))
+        c = concatenate((c, zeros(A.shape[1] - len(c))))
+        ret = simplex(A,b,c, 1, m)
+    
     # #teste matriz revisada
     # B = array([[1., 2., 3.], [-2., 3., 1.], [4.,-3.,-2.]])
     # u = array([-4,2,2])
