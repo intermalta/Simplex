@@ -2,6 +2,10 @@
 
 from numpy import *
 from random import randint
+import time
+
+
+eps = 0.000001 #tolerancia utilizada para comparacao de precisao
 
 def print_tableau(B, NonB, bi, base, nbase):
     Binv = B.copy()
@@ -19,8 +23,8 @@ def getTableau(Binv, N, b, base, nbase):
     return tableau
 
 def randomGraph():
-    nodes = randint(5,10)
-    print nodes
+    nodes = randint(5,25)
+    print 'Nodes: ' +str(nodes)
     edges = 0
     graph = zeros(shape=(nodes,nodes), dtype=float)
     for i in xrange(nodes):
@@ -39,12 +43,15 @@ def getRestrictionsPLI():
     g,n,m = randomGraph()
     A = zeros(shape=(m,n), dtype=float)
     row = 0
-    for i in xrange(m):
-        for j in xrange(m):
+    for i in xrange(n):
+        for j in xrange(n):
             if g[i][j] == 1:
                 A[row][i] = 1
                 A[row][j] = 1
                 row = row + 1
+    b = ones(m)*(-1)
+    c = ones(n)*(-1) # adaptando um problema de minimizacao a um problema de maximizacao
+    return A*(-1),b,c
 
 def validate_input(A, b, c):
     [m, n] = A.shape
@@ -56,13 +63,16 @@ def validate_input(A, b, c):
 
 def pivot(i, j, base, nbase):
    
-    print 'base antes do pivoteamento -> ' + (base+1).__str__()
+    #print 'base antes do pivoteamento -> ' + (base+1).__str__()
+    
     b = base.copy()
     n = nbase.copy()
+    
     aux = b[i]
     b[i] = n[j]
     n[j] = aux
-    print 'base depois do pivoteamento -> ' + (b+1).__str__()
+    
+    #print 'base depois do pivoteamento -> ' + (b+1).__str__()
     return b, n
 
 def revised_row(B, u, l):
@@ -95,22 +105,22 @@ def get_var_sainte(direcao, Binv, b):
     return nanargmin(temp)
 
 def phase_one(Aext, b, bmin, m, n):
-        # adding w to A matrix at last column 
+        # adding w to A matrix at last column
         w = ones((m, 1)) * (bmin)
+        
         AwithW = concatenate((Aext, w), 1)
         # print AwithW
-
-        # add -1 to w position in the new cost vector
-        cwithW = concatenate((zeros(m + n), ones(1) * (-1)))
-
-        base1 = array([i for i in range(n, n + m)])
         
+        #add -1 to w position in the new cost vector
+        cwithW = concatenate((zeros(m + n), ones(1) * (-1)))
+        base1 = array([i for i in range(n, n + m)])
         nbase1 = array([i for i in range(0, n + 1)])
         #colocando a variavel w no vetor de variaveis nao basicas
         nbase1[-1] = n + m
+        posW = n + m
+        entrante = len(nbase1) -1
 
         # adding w to the base
-        entrante = len(nbase1) -1 
         sainte = argmin(b)
         base1, nbase1 = pivot(sainte, entrante, base1, nbase1)
 
@@ -128,7 +138,7 @@ def phase_one(Aext, b, bmin, m, n):
             xbw = dot(Bwinv, b)
             zw = dot(cbw, xbw)
             
-            if max(cbw) < 0 or zw > 0:
+            if max(credw) < 0 or zw > 0:
                 print 'Problema inviavel'
                 return(-1, xbw)
             
@@ -136,11 +146,21 @@ def phase_one(Aext, b, bmin, m, n):
                 # we are at optimal z -> search for column w
                 posw = -1
                 for i in (range(len(nbase1))):
-                    if nbase1[i] == n + m:
+                    if nbase1[i] == posW:
                         posw = i
+                        break
                 if posw == -1:
+                    #base degenerada
+                    #procurando w na base
+                    for i in (xrange(len(base1))):
+                        if base1[i] == posW:
+                            posw = i
+                            break
+                    #atualizando B-1
+                    base1, nbase1 = pivot(posw, posw, base1, nbase1)
+                    Bwinv = revised_row(Bwinv, dot(Bwinv, Nw[:,posw]), posw) 
                     print 'w not found in non bases vector'
-                    exit(3)
+                    #exit(3)
 
                 Nw = delete(Nw, posw)
                 # print Nw
@@ -156,9 +176,7 @@ def phase_one(Aext, b, bmin, m, n):
                 if credw[j] > 0:
                     posicaoColunaw = j
                     break
-            if posicaoColunaw == -1:
-                print 'nao achou uma coluna para entrar'
-                exit(-20)
+            
             # direcao do deslocamento
             direcaow = dot(Bwinv, Nw[:, posicaoColunaw])
             dwmax = direcaow.max()
@@ -169,26 +187,21 @@ def phase_one(Aext, b, bmin, m, n):
                 posicaoLinhaw = get_var_sainte(direcaow, Bwinv, b)
                 base1, nbase1 = pivot(posicaoLinhaw, posicaoColunaw, base1, nbase1)
             Bwinv = revised_row(Bwinv, direcaow, posicaoLinhaw)
+        
+        #maximo de iteracoes atingido
+        return(-2, xbw)
              
-def simplex(A, b, c, gomory=0, cortes=0):
+def simplex(A, b, c):
     
     if validate_input(A, b, c):
         print 'input with bounds problems'
         exit(-1)
     [m, n] = A.shape
     # print [m,n]
-    if gomory == 0:
-        Aext = concatenate((A, eye(m)), 1)
-        # print Aext
-        cext = concatenate((c.transpose(), zeros(m)))
-    else:
-        if cortes == 0:
-            print 'Iteracao sem corte novo'
-            exit()
-        Aext = concatenate((A, eye(m,cortes)*(1)),1)
-        cext = concatenate((c, zeros(cortes)))
+    Aext = concatenate((A, eye(m)), 1)
+    # print Aext
+    cext = concatenate((c.transpose(), zeros(m)))
 
-    
     bmin = min(b)
     # print bmin
     if bmin < 0:
@@ -196,21 +209,21 @@ def simplex(A, b, c, gomory=0, cortes=0):
         ret = phase_one(Aext, b, bmin, m, n)
         if ret[0] == -1:
             return ret
+        elif ret[0] == -2 or ret[0] == 0:
+            print ret 
+            exit(-3)
         else:
             base = ret[1]
             nbase = ret[2]
             Binv = ret[3]
 
     else:
-        if gomory == 0:
-            base = array([i for i in range(n, n + m)])
-            nbase = array([i for i in range(0, n)])
-        else:
-            base = array([i for i in range(n, n + cortes)])
-            nbase = array([i for i in range(0, n)])
-    
+        base = array([i for i in range(n, n + m)])
+        nbase = array([i for i in range(0, n)])
         B = Aext[:, base]
         Binv = B.copy()
+        
+        
     # print Binv
 
     # simplex fase 2
@@ -232,19 +245,18 @@ def simplex(A, b, c, gomory=0, cortes=0):
         if vec.sum() == 0:
             print base, nbase
             print 'Fim fase 2 - %d iteracoes' % (200 - tentativas)
-            t = getTableau(Binv,N,b, base, nbase)
-            return 1,xb, z, y, cred, base, nbase, t, dot(Binv,b)
+            #t = getTableau(Binv,N,b, base, nbase)
+            return 1,xb, z, y, cred, base, nbase#, t, dot(Binv,b)
 
         # anti cycle - Bland's rule
         posicaoColuna = -1
+        #posicaoColuna = argmax(cred)
         for j in range(len(cred)):
             if cred[j] > 0:
-                #maximo = cred[j]
+                maximo = cred[j]
                 posicaoColuna = j
                 break
-        if posicaoColuna == -1:
-            print 'Erro ao achar a variavel que entra na base'
-            exit(-3)
+        
         # direcao do deslocamento
         direcao = dot(Binv, N[:, posicaoColuna])
         dmax = direcao.max()
@@ -256,12 +268,15 @@ def simplex(A, b, c, gomory=0, cortes=0):
         else:
             posicaoLinha = get_var_sainte(direcao, Binv, b)
             base, nbase = pivot(posicaoLinha, posicaoColuna, base, nbase)
-        
-        Binv = revised_row(Binv, direcao, posicaoLinha)   
+        #print 'base: ' + (base+1).__str__()
+        #print 'nbase' + (nbase+1).__str__()
+        #print_tableau(Binv, N, b, base, nbase)
+        Binv = revised_row(Binv, direcao, posicaoLinha)
+           
     #maximo de iteracoes atingido
     return (-2, xb)
 
-def print_relatorio(ret):
+def print_relatorio(ret,A):
     if (ret[0] == -2):
         print 'Estado: '+ str(ret[0])
         print'Maximo de iteracoes atingindo'
@@ -281,7 +296,7 @@ def print_relatorio(ret):
         base = array([0. for i in range(A.shape[1])]) #n
         nbase = array([0. for i in range(A.shape[0])]) #m
         for i in range(len(ret[5])):
-            if ret[5][i] > A.shape[0]:
+            if ret[5][i] > A.shape[1] -1:
                 nbase[ret[5][i] - A.shape[0]] = ret[1][i]
             else:
                 base[ret[5][i]] = ret[1][i]
@@ -291,50 +306,56 @@ def print_relatorio(ret):
         print 'variaveis duais: ' + ret[3].__str__()
         print 'indices de variaveis basicas: ' + (ret[5]+1).__str__()
         print 'indices de variaveis nao basicas: ' + (ret[6]+1).__str__()
-   
-def testa_inteiros(b, eps):
+        
+def get_xb_var_originais(xb, base, n):
+    
+    xbOriginal = array([0. for i in xrange(n)])
+    
+    for i in xrange(len(base)):
+        if base[i] < n:
+            xbOriginal[base[i]] = xb[i]
+
+    return xbOriginal
+
+#testa o valor de B^(-1)*b para a verificacao da restricao dos numeros serem inteiros   
+def testa_inteiros(b):
     for i in b:
         if abs(i - round(i)) > eps:
             return False
     return True
     
-def getLinhaGomory(t, rhs):
-    l = t.copy() 
+def getLinhaGomory(t, indice):
+    l = array([0. for i in xrange(len(t))]) 
     
-    for i in xrange(len(t)):
-        l[i] = t[i] - math.floor(t[i])
+    #for i in xrange(len(t)):
+    if t[indice] > 0:
+        l[indice] = 1
+        value = math.floor(t[indice])
+            #break
     
-    value = rhs - math.floor(rhs)
+    #value = rhs - math.floor(rhs)
     
     return l, value
     
-def getCuts(t, b, eps):
-    cut = array([])
-    rhs = array([])
-    primeiro = True
-    slack = 0
+def getCut(t):
     
-    for i in xrange(len(b)):
-        #if (abs(b[i] - round(b[i])) > eps):
-        l, value = getLinhaGomory(t[i], b[i])
-        if (primeiro == True): 
-            cut = concatenate((cut, l))
-            primeiro = False
-        else:
-            cut = concatenate((cut, l)).reshape(slack + 1, t.shape[1])
+    rhs = array([])
+    for i in xrange(len(t)):
+        if (abs(t[i] - round(t[i])) >eps):
+            cut,value = getLinhaGomory(t, i)
+            rhs = append(rhs, float(value)) #*(-1))
+            break     
+    
 
-        rhs = append(rhs, float(value))
-        slack = slack + 1
-            
-    #cut = concatenate((cut, eye(slack)), 1)
+    #multiplicando o corte por -1 para transformar a restricao do tipo <=
     return cut,rhs
             
             
             
 if __name__ == "__main__":
-    # c = array([4, 3])
-    # A = array([[2, 1], [1,2]])
-    # b = array([4,4])
+    #c = array([4, 3])
+    #A = array([[2, 1], [1,2]])
+    #b = array([4,4])
 
     # c = array([4,3])
     # A = array([[1,-1], [2,-1], [0,1]])
@@ -349,48 +370,50 @@ if __name__ == "__main__":
     #c = array([1,-1,1])
     #A = array([[2,-1,2],[2,-3,1], [-1,1,-2]])
     #b = array([4,-5,-1])
+    #ret = simplex(A,b,c)
+    #print_relatorio(ret,A)
   
     
     ############Exemplo de problema ilimitado
-    #c = array([4,3])
-    #A = array([[-2,-1],[-1,-2]])
-    #b = array([-4,-4])
-    #c = array([1,3])
-    #A = array([[-1,-1],[-1,1],[-1,2]])
-    #b = array([-3,-1,2])
-    #c = array([10,20])
-    #A = array([[2,3],[4,1]])
-    #b = array([6,4])
+    #c = array([2.,3.])
+    #A = array([[-1.,2.],[-5.,1.]])
+    #b = array([4.,1.])
     #ret = simplex(A,b,c)
     #print_relatorio(ret)
     
-    
-    
-    #A,m = randomGraph()
-    #print A 
-    #xb, z, y = simplex(A, b, c)
-    ##### GOMORY  
-    c = array([5,8])
-    A = array([[1,1],[5,9]])
-    b = array([6,45])
+    ##### GOMORY
+      
+    #c = array([4,-1])
+    #A = array([[7,-2],[0,1], [2,-2]])
+    #b = array([14,3,3])
     #while(True):
-        
-    eps = 0.00001
+    #testes grafo
+    A,b,c = getRestrictionsPLI()
+    start = time.clock()
     ret = simplex(A,b,c)
-    print_relatorio(ret)
-    A = concatenate((A, eye(A.shape[0])),1)
-    
-    #testa se os valores das variaveis sao inteiras
-    while(testa_inteiros(ret[8], eps) == False):
-        cut, rhs = getCuts(ret[7], ret[8], eps)
-        [m,n] = cut.shape
-        #A = concatenate((A, zeros((A.shape[0], m))), 1)
-        A = concatenate((cut, A))
+    print_relatorio(ret,A)
+    print 'time elapsed: ' + str(time.clock() - start) 
+    #A = concatenate((A, eye(A.shape[0])),1)
+    estado = ret[0]
+    maximo = 0
+    if estado == 1:
         
-        b = concatenate((b, rhs))
-        c = concatenate((c, zeros(A.shape[1] - len(c))))
-        ret = simplex(A,b,c, 1, m)
-    
+        #testa se os valores das variaveis sao inteiras
+        while(testa_inteiros(ret[1]) == False and maximo < 10):
+            start_gomory = time.clock()
+            t = get_xb_var_originais(ret[1], ret[5], A.shape[1])
+            cut, rhs = getCut(t)
+        
+            A = vstack((A, cut))
+            b = concatenate((b, rhs))
+            ret = simplex(A,b,c)
+            maximo = maximo + 1
+        
+        print_relatorio(ret,A)
+        print 'Elapsed gomory: ' + str(time.clock() - start_gomory)
+        del(A)
+        del(b)
+        del(c)
     # #teste matriz revisada
     # B = array([[1., 2., 3.], [-2., 3., 1.], [4.,-3.,-2.]])
     # u = array([-4,2,2])
@@ -406,3 +429,6 @@ if __name__ == "__main__":
     #print xb
     #print z
     #print y
+    
+    
+    
